@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">DownDetect</string>
+    <string name="header">DownDetect</string>
+    <string name="refresh">Refresh</string>
+    <string name="auto_refresh_enabled">Auto-refresh (120s)</string>
+    <string name="auto_refresh_disabled">Auto-refresh disabled</string>
+    <string name="status">Status:</string>
+    <string name="status_healthy">Healthy</string>
+    <string name="status_unhealthy">Unhealthy</string>
+    <string name="status_degraded">Degraded</string>
+    <string name="status_unknown">Unknown</string>
+    <string name="version">Version:</string>
+    <string name="time">Time:</string>
+    <string name="response_time">Response time:</string>
+    <string name="last_checked">Last checked:</string>
+    <string name="uptime">Uptime:</string>
+    <string name="avg_response">Avg response:</string>
+    <string name="check_status">Check status</string>
+    <string name="details">Details</string>
+    <string name="settings">Settings</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="no_apps">No monitored applications</string>
+    <string name="checking">Checking…</string>
+    <string name="connection_error">Connection error</string>
+    <string name="parsing_error">Data error</string>
+    <string name="wifi_required">Wi-Fi connection required</string>
+    <string name="error">Error</string>
+    <string name="success">Success</string>
+    <string name="loading">Loading…</string>
+
+    <string name="app_name_example">App Name</string>
+    <string name="app_link_example">http://example.com</string>
+
+</resources>
