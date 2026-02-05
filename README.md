@@ -188,4 +188,4 @@ Edit `res/values/colors.xml`:
 
 ---
 
-**Version:** 1.0.1  
+**Version:** 1.0.2
