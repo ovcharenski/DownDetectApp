@@ -34,4 +34,6 @@
     <string name="app_name_example">App Name</string>
     <string name="app_link_example">http://example.com</string>
 
+    <string name="no_connection">Connection problem. Check your internet connection and server.</string>
+
 </resources>

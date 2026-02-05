@@ -22,6 +22,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -36,12 +37,13 @@ class MainActivity : ComponentActivity() {
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private var autoRefreshJob: Job? = null
     private val refreshInterval = 120000L
-    private val apiBaseUrl = "http://192.168.31.150:4635"
-    private val accessToken = "KEY_ACCESS"
-
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: AppAdapter
     private val appList = mutableListOf<AppData>()
+    private var connectionProblem = false
+    private val apiBaseUrl: String by lazy {
+        loadApiBaseUrlFromConfig()
+    }
 
     @SuppressLint("ObsoleteSdkInt")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,17 +57,44 @@ class MainActivity : ComponentActivity() {
         startAutoRefresh()
     }
 
+    private fun loadApiBaseUrlFromConfig(): String {
+        return try {
+            val inputStream: InputStream = resources.openRawResource(R.raw.config)
+            val properties = Properties()
+            properties.load(inputStream)
+            inputStream.close()
+
+            val url = properties.getProperty("api_base_url")
+            Log.d("DownDetect", "Loaded API URL from config: $url")
+            url
+        } catch (e: Exception) {
+            Log.e("DownDetect", "Error loading config.properties", e)
+            ""
+        }
+    }
+
     private fun setupRecyclerView() {
         recyclerView = findViewById(R.id.recycler_view)
 
-        // Создаем GridLayoutManager с гибкой шириной карточек
         val layoutManager = GridLayoutManager(this, calculateSpanCount())
+
+        // ВАЖНО: Добавляем spanSizeLookup для правильного отображения сообщения
+        layoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int {
+                // Если список пустой (показываем сообщение), занимаем все колонки
+                return if (appList.isEmpty()) {
+                    layoutManager.spanCount
+                } else {
+                    1
+                }
+            }
+        }
+
         recyclerView.layoutManager = layoutManager
 
         adapter = AppAdapter()
         recyclerView.adapter = adapter
 
-        // Обновляем количество колонок при изменении ориентации
         recyclerView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             layoutManager.spanCount = calculateSpanCount()
         }
@@ -77,23 +106,17 @@ class MainActivity : ComponentActivity() {
         val screenWidthPx = displayMetrics.widthPixels
         val screenWidthDp = screenWidthPx / displayMetrics.density
 
-        // Минимальная ширина карточки в dp
         val minCardWidthDp = 300f
 
-        // Рассчитываем сколько карточек поместится
         val maxCardsPerRow = (screenWidthDp / minCardWidthDp).toInt()
 
-        // Проверяем ориентацию
         val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
         return when {
-            // На телефонах в портретной ориентации - 1 колонка
             screenWidthDp < 600 && !isLandscape -> 1
 
-            // На телефонах в горизонтальной ориентации или маленьких планшетах
             screenWidthDp < 720 -> if (isLandscape) 2 else 1
 
-            // На планшетах
             else -> {
                 if (maxCardsPerRow >= 3) 3
                 else if (maxCardsPerRow >= 2) 2
@@ -147,7 +170,6 @@ class MainActivity : ComponentActivity() {
                         Log.d("DownDetect", "Loading apps from: $url")
                         val request = Request.Builder()
                             .url(url)
-                            .addHeader("Authorization", "Bearer $accessToken")
                             .build()
 
                         client.newCall(request).execute().use { response ->
@@ -166,6 +188,7 @@ class MainActivity : ComponentActivity() {
                     try {
                         val appsArray = JSONArray(response)
                         appList.clear()
+                        connectionProblem = false
 
                         for (i in 0 until appsArray.length()) {
                             val appObject = appsArray.getJSONObject(i)
@@ -182,9 +205,11 @@ class MainActivity : ComponentActivity() {
                         showMessage("Data error")
                     }
                 } else {
+                    connectionProblem = true
                     showMessage("Connection failed")
                 }
             } catch (e: Exception) {
+                connectionProblem = true
                 showMessage("Error loading apps")
             } finally {
                 refreshButton.animate().rotation(0f).setDuration(0).start()
@@ -233,15 +258,23 @@ class MainActivity : ComponentActivity() {
     private fun showMessage(message: String) {
         appList.clear()
         adapter.notifyDataSetChanged()
-
-        // Можно добавить ViewHolder для отображения сообщения
-        // или просто оставить пустой список
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        // Обновляем количество колонок при изменении ориентации
-        (recyclerView.layoutManager as? GridLayoutManager)?.spanCount = calculateSpanCount()
+        val layoutManager = recyclerView.layoutManager as? GridLayoutManager
+        layoutManager?.spanCount = calculateSpanCount()
+
+        // Обновляем spanSizeLookup при изменении конфигурации
+        layoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int {
+                return if (appList.isEmpty()) {
+                    layoutManager.spanCount
+                } else {
+                    1
+                }
+            }
+        }
     }
 
     data class AppData(
@@ -254,7 +287,9 @@ class MainActivity : ComponentActivity() {
         var responseTime: Int? = null
     )
 
-    inner class AppAdapter : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
+    inner class AppAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        private val VIEW_TYPE_APP = 0
+        private val VIEW_TYPE_MESSAGE = 1
 
         inner class AppViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
             val appName: TextView = itemView.findViewById(R.id.app_name)
@@ -266,60 +301,84 @@ class MainActivity : ComponentActivity() {
             val responseTimeText: TextView = itemView.findViewById(R.id.response_time_text)
         }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.app_card, parent, false)
-            return AppViewHolder(view)
+        inner class MessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+            val messageText: TextView = itemView.findViewById(R.id.message_text)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            return if (viewType == VIEW_TYPE_APP) {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.app_card, parent, false)
+                AppViewHolder(view)
+            } else {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.message_card, parent, false)
+                MessageViewHolder(view)
+            }
+        }
+
+        override fun getItemViewType(position: Int): Int {
+            return if (appList.isEmpty()) VIEW_TYPE_MESSAGE else VIEW_TYPE_APP
+        }
+
+        override fun getItemCount(): Int {
+            return if (appList.isEmpty()) 1 else appList.size
         }
 
         @SuppressLint("SetTextI18n")
-        override fun onBindViewHolder(holder: AppViewHolder, position: Int) {
-            val app = appList[position]
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            if (holder is AppViewHolder) {
+                val app = appList[position]
 
-            holder.appName.text = app.displayName
-            holder.appUrl.text = app.baseUrl
+                holder.appName.text = app.displayName
+                holder.appUrl.text = app.baseUrl
 
-            if (!app.isActive) {
-                holder.appName.setTextColor(
-                    ContextCompat.getColor(this@MainActivity, android.R.color.darker_gray)
-                )
-            }
-
-            when (app.status.lowercase(Locale.US)) {
-                "healthy" -> {
-                    holder.statusText.text = "Healthy"
-                    holder.statusText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_healthy))
-                    holder.statusIndicator.setBackgroundResource(R.drawable.circle_green)
+                if (!app.isActive) {
+                    holder.appName.setTextColor(
+                        ContextCompat.getColor(this@MainActivity, android.R.color.darker_gray)
+                    )
                 }
-                "unhealthy", "down" -> {
-                    holder.statusText.text = "Unhealthy"
-                    holder.statusText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_unhealthy))
-                    holder.statusIndicator.setBackgroundResource(R.drawable.circle_red)
-                }
-                "degraded", "warning" -> {
-                    holder.statusText.text = "Degraded"
-                    holder.statusText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_degraded))
-                    holder.statusIndicator.setBackgroundResource(R.drawable.circle_yellow)
-                }
-                else -> {
-                    holder.statusText.text = "Unknown"
-                    holder.statusText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_unknown))
-                    holder.statusIndicator.setBackgroundResource(R.drawable.circle_gray)
-                }
-            }
 
-            holder.versionText.text = "Version: ${app.version}"
-            holder.timestampText.text = "Time: ${app.timestamp}"
+                when (app.status.lowercase(Locale.US)) {
+                    "healthy" -> {
+                        holder.statusText.text = "Healthy"
+                        holder.statusText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_healthy))
+                        holder.statusIndicator.setBackgroundResource(R.drawable.circle_green)
+                    }
+                    "unhealthy", "down" -> {
+                        holder.statusText.text = "Unhealthy"
+                        holder.statusText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_unhealthy))
+                        holder.statusIndicator.setBackgroundResource(R.drawable.circle_red)
+                    }
+                    "degraded", "warning" -> {
+                        holder.statusText.text = "Degraded"
+                        holder.statusText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_degraded))
+                        holder.statusIndicator.setBackgroundResource(R.drawable.circle_yellow)
+                    }
+                    else -> {
+                        holder.statusText.text = "Unknown"
+                        holder.statusText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_unknown))
+                        holder.statusIndicator.setBackgroundResource(R.drawable.circle_gray)
+                    }
+                }
 
-            val responseTime = app.responseTime ?: "--"
-            holder.responseTimeText.text = "Response time: ${responseTime}${if (responseTime != "--") "ms" else ""}"
+                holder.versionText.text = "Version: ${app.version}"
+                holder.timestampText.text = "Time: ${app.timestamp}"
 
-            holder.itemView.setOnClickListener {
-                Log.d("DownDetect", "Clicked on app: ${app.displayName}")
+                val responseTime = app.responseTime ?: "--"
+                holder.responseTimeText.text = "Response time: ${responseTime}${if (responseTime != "--") "ms" else ""}"
+
+                holder.itemView.setOnClickListener {
+                    Log.d("DownDetect", "Clicked on app: ${app.displayName}")
+                }
+            } else if (holder is MessageViewHolder) {
+                holder.messageText.text = if (connectionProblem) {
+                    "Connection problem. Check your internet connection and server."
+                } else {
+                    "No applications available"
+                }
             }
         }
-
-        override fun getItemCount(): Int = appList.size
     }
 
     override fun onResume() {
