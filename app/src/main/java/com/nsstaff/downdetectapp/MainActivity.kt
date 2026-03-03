@@ -1,5 +1,6 @@
 package com.nsstaff.downdetectapp
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.os.Build
@@ -13,13 +14,17 @@ import android.view.WindowInsetsController
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.*
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.InputStream
@@ -45,6 +50,14 @@ class MainActivity : ComponentActivity() {
         loadApiBaseUrlFromConfig()
     }
 
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            registerFcmToken()
+        }
+    }
+
     @SuppressLint("ObsoleteSdkInt")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,6 +68,41 @@ class MainActivity : ComponentActivity() {
         setupRefreshButton()
         loadApps()
         startAutoRefresh()
+        setupPushNotifications()
+    }
+
+    private fun setupPushNotifications() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        registerFcmToken()
+    }
+
+    private fun registerFcmToken() {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.w("DownDetect", "FCM token failed", task.exception)
+                return@addOnCompleteListener
+            }
+            val token = task.result ?: return@addOnCompleteListener
+            if (apiBaseUrl.isBlank()) return@addOnCompleteListener
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val url = "$apiBaseUrl/api/register-push"
+                    val body = """{"token":"$token"}""".toRequestBody("application/json".toMediaType())
+                    val request = Request.Builder().url(url).post(body).build()
+                    client.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            Log.d("DownDetect", "FCM token registered")
+                        } else {
+                            Log.w("DownDetect", "FCM registration failed: ${response.code}")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("DownDetect", "FCM registration error", e)
+                }
+            }
+        }
     }
 
     private fun loadApiBaseUrlFromConfig(): String {

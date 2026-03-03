@@ -16,3 +16,4 @@ local.properties
 /.idea/
 /.kotlin/
 *.properties
+app/google-services.json
