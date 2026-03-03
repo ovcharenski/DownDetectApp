@@ -1,4 +1,4 @@
-package com.example.downdetectapp
+package com.nsstaff.downdetectapp
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration

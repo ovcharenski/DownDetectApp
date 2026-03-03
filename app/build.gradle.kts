@@ -4,17 +4,17 @@ plugins {
 }
 
 android {
-    namespace = "com.example.downdetectapp"
+    namespace = "com.nsstaff.downdetectapp"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.example.downdetectapp"
+        applicationId = "com.nsstaff.downdetectapp"
         minSdk = 29
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0.3"
+        versionName = "1.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

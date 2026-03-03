@@ -1,4 +1,4 @@
-package com.example.downdetectapp.ui.theme
+package com.nsstaff.downdetectapp.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

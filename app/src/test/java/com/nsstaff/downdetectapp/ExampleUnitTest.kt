@@ -1,4 +1,4 @@
-package com.example.downdetectapp
+package com.nsstaff.downdetectapp
 
 import org.junit.Test
 
