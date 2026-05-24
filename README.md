@@ -185,7 +185,3 @@ Edit `res/values/colors.xml`:
 3. **Refresh not working**
     - Check auto-refresh interval
     - Verify coroutine scope is active
-
----
-
-**Version:** 1.1.0

@@ -381,10 +381,30 @@ class MainActivity : ComponentActivity() {
                 holder.appName.text = app.displayName
                 holder.appUrl.text = app.baseUrl
 
+                if (app.isActive) {
+                    holder.appName.setTextColor(
+                        ContextCompat.getColor(this@MainActivity, R.color.white)
+                    )
+                }
+
                 if (!app.isActive) {
                     holder.appName.setTextColor(
                         ContextCompat.getColor(this@MainActivity, android.R.color.darker_gray)
                     )
+                    holder.statusText.text = getString(R.string.status_maintenance)
+                    holder.statusText.setTextColor(
+                        ContextCompat.getColor(this@MainActivity, R.color.status_maintenance)
+                    )
+                    holder.statusIndicator.setBackgroundResource(R.drawable.circle_blue)
+                    holder.versionText.text = "Version: ${app.version}"
+                    holder.timestampText.text = "Time: ${app.timestamp}"
+                    val responseTime = app.responseTime ?: "--"
+                    holder.responseTimeText.text =
+                        "Response time: ${responseTime}${if (responseTime != "--") "ms" else ""}"
+                    holder.itemView.setOnClickListener {
+                        Log.d("DownDetect", "Clicked on app: ${app.displayName}")
+                    }
+                    return
                 }
 
                 when (app.status.lowercase(Locale.US)) {

@@ -21,4 +21,5 @@
     <color name="status_degraded">#FF9800</color>
     <color name="status_unhealthy">#FF5252</color>
     <color name="status_unknown">#9E9E9E</color>
+    <color name="status_maintenance">#42A5F5</color>
 </resources>
