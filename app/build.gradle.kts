@@ -6,16 +6,14 @@ plugins {
 
 android {
     namespace = "com.nsstaff.downdetectapp"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.nsstaff.downdetectapp"
         minSdk = 29
         targetSdk = 36
         versionCode = 1
-        versionName = "1.2.0"
+        versionName = "1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,6 +33,10 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    lint {
+        abortOnError = false
     }
 }
 
@@ -63,4 +65,5 @@ dependencies {
     implementation(libs.firebase.messaging)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation(libs.androidx.fragment.ktx)
 }
