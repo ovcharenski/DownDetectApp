@@ -1,19 +1,20 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.services)
 }
 
 android {
     namespace = "com.nsstaff.downdetectapp"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.nsstaff.downdetectapp"
         minSdk = 29
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.2.1"
+        targetSdk = 35
+        versionCode = 3
+        versionName = "1.2.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -28,9 +29,10 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
+
     buildFeatures {
         compose = true
     }
@@ -38,6 +40,10 @@ android {
     lint {
         abortOnError = false
     }
+}
+
+kotlin {
+    jvmToolchain(21)
 }
 
 dependencies {

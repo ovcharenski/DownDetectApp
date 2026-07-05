@@ -61,8 +61,8 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("ObsoleteSdkInt")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setupTransparentStatusBar()
         setContentView(R.layout.activity_main)
+        setupTransparentStatusBar()
 
         setupRecyclerView()
         setupRefreshButton()
